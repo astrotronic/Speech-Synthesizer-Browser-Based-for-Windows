@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Synchronized Dark Mode TTS</title>
+    <style>
+        :root {
+            --bg-color: #111827;
+            --card-bg: #1f2937;
+            --input-bg: #374151;
+            
+            --primary: #6366f1;
+            --primary-hover: #818cf8;
+            --avatar-accent: #a5b4fc;
+            
+            --text-main: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --border-color: #4b5563;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            padding: 2rem;
+            border-radius: 16px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 480px;
+            border: 1px solid #374151;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* --- AVATAR & ANIMATIONS --- */
+        .avatar-wrapper {
+            width: 120px;
+            height: 120px;
+            margin-bottom: 1rem;
+            position: relative;
+        }
+
+        .avatar-svg {
+            width: 100%;
+            height: 100%;
+            filter: drop-shadow(0 4px 10px rgba(99, 102, 241, 0.2));
+        }
+
+        @keyframes blink {
+            0%, 90%, 100% { transform: scaleY(1); }
+            95% { transform: scaleY(0.1); }
+        }
+
+        .eye {
+            transform-origin: center;
+            animation: blink 4s infinite;
+        }
+
+        /* Dynamic mouth talking keyframes */
+        @keyframes talkLoop {
+            0% { d: path("M 38 68 Q 50 68 62 68"); }
+            25% { d: path("M 38 65 Q 50 82 62 65"); }
+            50% { d: path("M 40 66 Q 50 72 60 66"); }
+            75% { d: path("M 36 64 Q 50 84 64 64"); }
+            100% { d: path("M 38 68 Q 50 68 62 68"); }
+        }
+
+        /* Active talking state */
+        .avatar-wrapper.talking #mouth {
+            animation: talkLoop 0.2s infinite ease-in-out;
+        }
+
+        .avatar-wrapper.paused #mouth {
+            animation-play-state: paused !important;
+        }
+
+        @keyframes auraPulse {
+            0%, 100% { transform: scale(1); opacity: 0.3; }
+            50% { transform: scale(1.05); opacity: 0.6; }
+        }
+
+        .aura {
+            transform-origin: center;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .avatar-wrapper.talking .aura {
+            opacity: 0.4;
+            animation: auraPulse 1.5s infinite ease-in-out;
+        }
+        /* --------------------------- */
+
+        h1 {
+            font-size: 1.35rem;
+            margin-top: 0;
+            margin-bottom: 1.25rem;
+            text-align: center;
+            color: var(--text-main);
+        }
+
+        textarea {
+            width: 100%;
+            height: 110px;
+            padding: 0.75rem;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: inherit;
+            resize: vertical;
+            box-sizing: border-box;
+            margin-bottom: 1rem;
+        }
+
+        textarea::placeholder {
+            color: var(--text-secondary);
+        }
+
+        textarea:focus, select:focus {
+            outline: 2px solid var(--primary);
+            border-color: transparent;
+        }
+
+        .control-group {
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 0.35rem;
+            color: var(--text-secondary);
+        }
+
+        select {
+            width: 100%;
+            padding: 0.5rem;
+            border-radius: 6px;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            box-sizing: border-box;
+            cursor: pointer;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        .range-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .range-val {
+            font-family: monospace;
+            color: var(--primary-hover);
+            font-weight: bold;
+            width: 35px;
+            text-align: right;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            margin-top: 1.25rem;
+        }
+
+        button {
+            flex: 1;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 8px;
+            background-color: var(--primary);
+            color: #ffffff;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.15s ease, transform 0.1s ease;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        button.secondary {
+            background-color: #4b5563;
+        }
+
+        button.secondary:hover {
+            background-color: #6b7280;
+        }
+
+        button.danger {
+            background-color: #ef4444;
+        }
+
+        button.danger:hover {
+            background-color: #f87171;
+        }
+
+        select option {
+            background-color: var(--input-bg);
+            color: var(--text-main);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="avatar-wrapper" id="avatar">
+        <svg class="avatar-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <circle class="aura" cx="50" cy="50" r="45" fill="var(--primary)" />
+            <circle cx="50" cy="50" r="40" fill="#374151" stroke="var(--border-color)" stroke-width="2" />
+            
+            <rect x="6" y="42" width="6" height="16" rx="3" fill="var(--primary)" />
+            <rect x="88" y="42" width="6" height="16" rx="3" fill="var(--primary)" />
+
+            <rect x="20" y="24" width="60" height="52" rx="12" fill="#1f2937" stroke="#4b5563" stroke-width="1.5" />
+
+            <g class="eye">
+                <circle cx="36" cy="42" r="6" fill="var(--primary-hover)" />
+                <circle cx="38" cy="40" r="2" fill="#ffffff" />
+            </g>
+            <g class="eye">
+                <circle cx="64" cy="42" r="6" fill="var(--primary-hover)" />
+                <circle cx="66" cy="40" r="2" fill="#ffffff" />
+            </g>
+
+            <circle cx="30" cy="52" r="3" fill="#f43f5e" opacity="0.4" />
+            <circle cx="70" cy="52" r="3" fill="#f43f5e" opacity="0.4" />
+
+            <path id="mouth" d="M 38 65 Q 50 65 62 65" 
+                  fill="var(--primary)" 
+                  stroke="var(--avatar-accent)" 
+                  stroke-width="2" 
+                  stroke-linecap="round" />
+        </svg>
+    </div>
+
+    <h1>Speech Synthesizer</h1>
+    
+    <textarea id="text-input" placeholder="Type or paste text here...">THE STORY OF THE THREE LITTLE PIGS.
+
+ONCE upon a time there was an old sow with three little pigs, and as she had not enough to keep them, she sent them out to seek their fortune. The first that went off met a man with a bundle of straw, and said to him, " Please, man, give me that straw to build me a house ; " which the man did, and the little pig built a house with it. Presently came along a wolf, and knocked at the door, and said,—
+
+" Little pig, little pig, let me come in." To which the pig answered, — " No, no, by the hair of my chinny chin shin."
+
+The wolf then answered to that,— "Then I'll huff, and I'll puff, and I'll blow your house in."
+
+So he huffed, and he puffed, and he blew his house in, and eat up the little pig.
+
+The second little pig met a man with a bundle of furze (a thorny evergreen shrub), and said, " Please, man. give me that furze to build a house ; " which the man did, and the pig built his house. Then along came the wolf, and said, —
+
+" Little pig, little pig, let me come in."
+
+" No, no, by the hair of my chinny chin chin."
+
+"Then I'll puff, and I'll huff, and I'll blow your house in."
+
+So he huffed, and he puffed, and he puffed, and he huffed, and at last he blew the house down, and he ate up the little pig-
+
+The third little pig met a man with a load of bricks, and said, " Please, man, give me those bricks to build a house with ;" so the man gave him the bricks, and he built his house with them. So the wolf came, as he did to the other little pigs, and said," Little pig, little pig, let me come in." '•' No, no, by the hair of my chinny chin chin."
+
+« Then I'll huff, and I'll puff, and I'll blow your house in."
+
+Well, he huffed, and he puffed, and he huffed, and he puffed, and he puffed, and he huffed; but he could not get the house down. When he found that he could not, with all his huffing and puffing, blow the house down, he said, " Little pig, I know where there is a nice field of turnips." "Where?' said the little pig.
+
+
+"Oh, in Mr. Smith's Home-field, and if you will be ready to-morrow morning I will call for you, and we will go together, and get some for dinner." " Very well," said the little pig, " I will be ready. What time do you mean to go? " " Oh, at six o'clock." Well, the little pig got up at five, and got the turnips before the wolf came — (which he did about six) — and who said, " Little pig, are you ready? ' The little pig said, "Ready! I have been, and come back again, and got a nice pot-full for dinner." The wolf felt very angry at this, but thought that he would be up to the little pig somehow or other, so he said, " Little pig, I know where there is a nice apple-tree." ' Where? '' said the pig. " Down at Merry-garden," replied the wolf, " and if you will not deceive me I will come for you, at five o'clock tomorrow, and we will go together and get some apples." Well, the little pig bustled up the next morning at four o'clock, and went off for the apples, hoping to get back before the wolf came ; but he had further to go, and had to climb the tree, so that just as he was coming down from it, he saw the wolf coming, which, as you may suppose, frightened him very much. When the wolf came up he said, " Little pig, what! Are you here before me ? Are they nice apples?" "Yes, very," said the little pig. " I will throw you down one ; " and he threw it so far, that, while the wolf was gone to pick it up, the little pig jumped down and ran home.
+
+The next day the wolf came again, and said to the little pig, " Little pig, there is a fair at Shanklin this afternoon, will you go?' "Oh yes," said the pig, " I will go ; what time shall you be ready?" "At three," said the wolf. So the little pig went off before the time as usual, and got to the fair, and bought a butter-churn, which he was going home with, when he saw the wolf coining. Then he could not tell what to do. So he got into the churn to hide, and by so doing turned it round, and it rolled down the hill with the pig in it, which frightened the wolf so. much, that he ran home without going to the fair. He went to the little pig's house, and told him how frightened he had been by a great round thing which came down the hill past him. Then the little pig said, " Hah, I frightened you then. I had been to the fair and bought a butter churn, and when I saw you. I got into it, and rolled down the hill." Then the wolf was very angry indeed, and declared he would eat up the little pig, and that he would get down the chimney after him. When the little pig saw what he was about, he hung on the pot full of water, and made up a blazing fire, and, just as the wolf was coming down, took off the cover, and in fell the wolf; so the little pig put on the cover again in an instant, boiled him up, and ate him for supper, and lived happy ever afterwards.</textarea>
+
+    <div class="control-group">
+        <label for="voice-select">Voice</label>
+        <select id="voice-select"></select>
+    </div>
+
+    <div class="control-group">
+        <label for="rate">Speed</label>
+        <div class="range-container">
+            <input type="range" id="rate" min="0.5" max="2" value="1" step="0.1">
+            <span id="rate-value" class="range-val">1x</span>
+        </div>
+    </div>
+
+    <div class="control-group">
+        <label for="pitch">Pitch</label>
+        <div class="range-container">
+            <input type="range" id="pitch" min="0.5" max="2" value="1" step="0.1">
+            <span id="pitch-value" class="range-val">1</span>
+        </div>
+    </div>
+
+    <div class="button-group">
+        <button id="speak-btn">Speak</button>
+        <button id="pause-btn" class="secondary">Pause</button>
+        <button id="stop-btn" class="danger">Stop</button>
+    </div>
+</div>
+
+<script>
+    const synth = window.speechSynthesis;
+
+    const avatar = document.getElementById('avatar');
+    const textInput = document.getElementById('text-input');
+    const voiceSelect = document.getElementById('voice-select');
+    const rateInput = document.getElementById('rate');
+    const pitchInput = document.getElementById('pitch');
+    const rateValue = document.getElementById('rate-value');
+    const pitchValue = document.getElementById('pitch-value');
+
+    const speakBtn = document.getElementById('speak-btn');
+    const pauseBtn = document.getElementById('pause-btn');
+    const stopBtn = document.getElementById('stop-btn');
+
+    let voices = [];
+    let silenceTimer = null;
+
+    function startTalking() {
+        avatar.classList.remove('paused');
+        avatar.classList.add('talking');
+    }
+
+    function pauseTalking() {
+        avatar.classList.add('paused');
+    }
+
+    function stopTalking() {
+        if (silenceTimer) {
+            clearTimeout(silenceTimer);
+            silenceTimer = null;
+        }
+        avatar.classList.remove('talking', 'paused');
+    }
+
+    // Reset timer that stops mouth movement if no word events arrive
+    function resetSilenceTimer() {
+        if (silenceTimer) clearTimeout(silenceTimer);
+        
+        // Dynamically adjust silence tolerance based on speech rate
+        const currentRate = parseFloat(rateInput.value) || 1.0;
+        const cutoffDelay = Math.max(160, Math.min(400, 300 / currentRate));
+
+        silenceTimer = setTimeout(() => {
+            avatar.classList.remove('talking');
+        }, cutoffDelay);
+    }
+
+    function populateVoiceList() {
+        if (!synth) return;
+        voices = synth.getVoices();
+        voiceSelect.innerHTML = '';
+
+        voices.forEach((voice) => {
+            const option = document.createElement('option');
+            option.textContent = `${voice.name} (${voice.lang})`;
+            option.setAttribute('data-name', voice.name);
+            if (voice.default) {
+                option.textContent += ' — Default';
+            }
+            voiceSelect.appendChild(option);
+        });
+    }
+
+    populateVoiceList();
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = populateVoiceList;
+    }
+
+    speakBtn.addEventListener('click', () => {
+        if (!synth) {
+            alert('Speech Synthesis is not supported in this browser.');
+            return;
+        }
+
+        if (synth.speaking && synth.paused) {
+            synth.resume();
+            startTalking();
+            resetSilenceTimer();
+            pauseBtn.textContent = 'Pause';
+            return;
+        }
+
+        if (textInput.value.trim() !== '') {
+            stopTalking();
+            synth.cancel();
+
+            const utterance = new SpeechSynthesisUtterance(textInput.value);
+            
+            const selectedName = voiceSelect.selectedOptions[0]?.getAttribute('data-name');
+            if (selectedName) {
+                utterance.voice = voices.find(v => v.name === selectedName);
+            }
+
+            utterance.rate = parseFloat(rateInput.value);
+            utterance.pitch = parseFloat(pitchInput.value);
+
+            utterance.onstart = () => {
+                startTalking();
+                resetSilenceTimer();
+            };
+
+            // Trigger on each spoken word to sync movement directly to speech audio
+            utterance.onboundary = (event) => {
+                if (event.name === 'word') {
+                    startTalking();
+                    
+                    const mouth = document.getElementById('mouth');
+                    mouth.style.animationDuration = `${0.16 / utterance.rate}s`;
+                    
+                    resetSilenceTimer();
+                }
+            };
+
+            utterance.onend = () => {
+                stopTalking();
+                pauseBtn.textContent = 'Pause';
+            };
+
+            utterance.onerror = () => {
+                stopTalking();
+                pauseBtn.textContent = 'Pause';
+            };
+
+            synth.speak(utterance);
+        }
+    });
+
+    pauseBtn.addEventListener('click', () => {
+        if (synth.speaking) {
+            if (synth.paused) {
+                synth.resume();
+                startTalking();
+                resetSilenceTimer();
+                pauseBtn.textContent = 'Pause';
+            } else {
+                synth.pause();
+                pauseTalking();
+                if (silenceTimer) clearTimeout(silenceTimer);
+                pauseBtn.textContent = 'Resume';
+            }
+        }
+    });
+
+    stopBtn.addEventListener('click', () => {
+        if (synth.speaking || synth.paused) {
+            synth.cancel();
+            stopTalking();
+            pauseBtn.textContent = 'Pause';
+        }
+    });
+
+    rateInput.addEventListener('input', () => {
+        rateValue.textContent = `${rateInput.value}x`;
+    });
+
+    pitchInput.addEventListener('input', () => {
+        pitchValue.textContent = pitchInput.value;
+    });
+</script>
+
+</body>
+</html>
